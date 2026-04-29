@@ -3887,6 +3887,11 @@ label {
   padding: 16px;
 }
 
+.recommendation-card-main {
+  display: grid;
+  gap: 8px;
+}
+
 .recommendation-card-header,
 .recommendation-title-row {
   display: flex;
@@ -3919,6 +3924,56 @@ label {
   white-space: nowrap;
 }
 
+.recommendation-primary-chips {
+  margin-top: 2px;
+}
+
+.recommendation-card-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.recommendation-primary-action {
+  white-space: nowrap;
+}
+
+.recommendation-expanded {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 8px;
+}
+
+.recommendation-expanded summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  list-style: none;
+}
+
+.recommendation-expanded summary::-webkit-details-marker {
+  display: none;
+}
+
+.recommendation-expanded summary::after {
+  content: " +";
+  color: var(--accent-strong);
+}
+
+.recommendation-expanded[open] summary::after {
+  content: " -";
+}
+
+.recommendation-expanded-content {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .recommendation-signal-block {
   display: grid;
   gap: 7px;
@@ -3946,6 +4001,41 @@ label {
   font-weight: 800;
 }
 
+.recommendation-breakdown {
+  display: grid;
+  gap: 7px;
+}
+
+.recommendation-breakdown > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.recommendation-breakdown > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.recommendation-breakdown p {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.76rem;
+}
+
+.recommendation-breakdown strong {
+  color: var(--gold);
+}
+
 @media (max-width: 900px) {
   .taste-profile-panel,
   .radar-empty-state {
@@ -3960,7 +4050,9 @@ label {
 @media (max-width: 560px) {
   .taste-signal-grid,
   .recommendation-card-header,
-  .recommendation-title-row {
+  .recommendation-title-row,
+  .recommendation-card-footer,
+  .recommendation-breakdown > div {
     grid-template-columns: 1fr;
   }
 

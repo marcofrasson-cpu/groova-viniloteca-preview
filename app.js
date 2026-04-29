@@ -5368,58 +5368,7 @@ function renderRecommendations() {
 
   const recommendationCards = recommendations.length
     ? recommendations
-        .map(
-          (album) => `
-        <article class="recommendation-card">
-          <div class="recommendation-cover">
-            ${renderRecommendationCover(album)}
-          </div>
-            <div class="recommendation-body">
-              <div class="recommendation-card-header">
-                <span class="recommendation-label" data-section="${escapeAttribute(album.recommendationSection || "certeiras")}">${escapeHtml(album.recommendationLabel || "Próximo passo")}</span>
-                <span class="recommendation-confidence">${escapeHtml(getRecommendationConfidenceLabel(album, radarStage))}</span>
-              </div>
-              <div class="recommendation-title-row">
-                <h3>${escapeHtml(album.title)}</h3>
-                <strong>${album.scorePercent}%</strong>
-              </div>
-              <div class="recommendation-meta">
-                ${escapeHtml(album.artist)} · ${album.year} · ${escapeHtml(album.genre)}
-              </div>
-              <div class="recommendation-why">
-                <span>Por que combina</span>
-                <p>${escapeHtml(album.dynamicReason || album.reason)}</p>
-              </div>
-              ${renderRecommendationInfluence(album)}
-              ${renderRecommendationSignalChips(album)}
-              <div class="recommendation-score">
-                <span>Aderência: ${album.scorePercent}%</span>
-                <span class="score-meter"><span style="width: ${album.scorePercent}%"></span></span>
-              </div>
-            <div class="card-actions">
-              <button class="mini-button" data-save-rec="${escapeAttribute(album.title)}|${escapeAttribute(album.artist)}">
-                <i data-lucide="bookmark-plus"></i>
-                Salvar no radar
-              </button>
-              <div class="recommendation-feedback-actions">
-                <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="more-like-this">
-                  <i data-lucide="sparkles"></i>
-                  Mais nessa linha
-                </button>
-                <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="not-for-me">
-                  <i data-lucide="x"></i>
-                  Não é pra mim
-                </button>
-                <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="owned">
-                  <i data-lucide="check-circle-2"></i>
-                  Já tenho
-                </button>
-              </div>
-            </div>
-          </div>
-        </article>
-      `
-        )
+        .map((album) => renderRecommendationCard(album, radarStage))
         .join("")
     : renderRecommendationNoResults();
 
@@ -5447,6 +5396,68 @@ function renderRecommendations() {
   renderCoverCanvases();
   createIcons();
   hydrateRecommendationCovers(recommendations);
+}
+
+function renderRecommendationCard(album, radarStage) {
+  return `
+    <article class="recommendation-card">
+      <div class="recommendation-cover">
+        ${renderRecommendationCover(album)}
+      </div>
+      <div class="recommendation-body">
+        <div class="recommendation-card-main">
+          <div class="recommendation-card-header">
+            <span class="recommendation-label" data-section="${escapeAttribute(album.recommendationSection || "certeiras")}">${escapeHtml(album.recommendationLabel || "Próximo passo")}</span>
+            <span class="recommendation-confidence">${escapeHtml(getRecommendationConfidenceLabel(album, radarStage))}</span>
+          </div>
+          <div class="recommendation-title-row">
+            <h3>${escapeHtml(album.title)}</h3>
+            <strong>${album.scorePercent}%</strong>
+          </div>
+          <div class="recommendation-meta">
+            ${escapeHtml(album.artist)} · ${album.year} · ${escapeHtml(album.genre)}
+          </div>
+          <div class="recommendation-why">
+            <span>Por que combina</span>
+            <p>${escapeHtml(getRecommendationShortReason(album))}</p>
+          </div>
+          ${renderRecommendationPrimarySignals(album)}
+          <div class="recommendation-card-footer">
+            <div class="recommendation-score">
+              <span>Aderência: ${album.scorePercent}%</span>
+              <span class="score-meter"><span style="width: ${album.scorePercent}%"></span></span>
+            </div>
+            <button class="mini-button recommendation-primary-action" data-save-rec="${escapeAttribute(album.title)}|${escapeAttribute(album.artist)}">
+              <i data-lucide="bookmark-plus"></i>
+              Salvar no radar
+            </button>
+          </div>
+        </div>
+        <details class="recommendation-expanded">
+          <summary>Ver curadoria completa</summary>
+          <div class="recommendation-expanded-content">
+            ${renderRecommendationInfluence(album)}
+            ${renderRecommendationAllSignals(album)}
+            ${renderRecommendationScoreBreakdown(album)}
+            <div class="recommendation-feedback-actions">
+              <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="more-like-this">
+                <i data-lucide="sparkles"></i>
+                Mais nessa linha
+              </button>
+              <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="not-for-me">
+                <i data-lucide="x"></i>
+                Não é pra mim
+              </button>
+              <button class="ghost-mini-button" data-feedback-rec="${escapeAttribute(album.identityKey)}" data-feedback-action="owned">
+                <i data-lucide="check-circle-2"></i>
+                Já tenho
+              </button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </article>
+  `;
 }
 
 function getRadarStage(collectionSize) {
@@ -5623,8 +5634,25 @@ function renderRecommendationReasonChips(album) {
   `;
 }
 
+function getRecommendationShortReason(album) {
+  const text = String(album.dynamicReason || album.reason || "").trim();
+  if (!text) return "A curadoria encontrou sinais consistentes na sua estante.";
+  const sentence = text.split(/(?<=[.!?])\s+/)[0] || text;
+  return sentence.length > 150 ? `${sentence.slice(0, 147).trim()}...` : sentence;
+}
+
+function renderRecommendationPrimarySignals(album) {
+  const chips = getRecommendationVisibleSignals(album, 3);
+  if (!chips.length) return "";
+  return `
+    <div class="recommendation-chips recommendation-primary-chips">
+      ${chips.map((chip) => `<span class="reason-chip">${escapeHtml(chip)}</span>`).join("")}
+    </div>
+  `;
+}
+
 function renderRecommendationSignalChips(album) {
-  const chips = getRecommendationVisibleSignals(album);
+  const chips = getRecommendationVisibleSignals(album, 4);
   if (!chips.length) return "";
   return `
     <div class="recommendation-signal-block">
@@ -5636,13 +5664,29 @@ function renderRecommendationSignalChips(album) {
   `;
 }
 
-function getRecommendationVisibleSignals(album) {
+function renderRecommendationAllSignals(album) {
+  const chips = uniqueList([
+    ...(album.reasonChips || []),
+    ...(album.matchedSignals || []).map(formatRecommendationSignal)
+  ].filter(Boolean));
+  if (!chips.length) return "";
+  return `
+    <div class="recommendation-signal-block">
+      <span>Todos os sinais usados</span>
+      <div class="recommendation-chips">
+        ${chips.map((chip) => `<span class="reason-chip">${escapeHtml(chip)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function getRecommendationVisibleSignals(album, limit = 4) {
   const curated = (album.reasonChips || []).filter(Boolean);
-  if (curated.length) return curated.slice(0, 4);
+  if (curated.length) return curated.slice(0, limit);
   return (album.matchedSignals || [])
     .map(formatRecommendationSignal)
     .filter(Boolean)
-    .slice(0, 4);
+    .slice(0, limit);
 }
 
 function formatRecommendationSignal(signal) {
@@ -5665,6 +5709,38 @@ function renderRecommendationInfluence(album) {
     <div class="recommendation-influence">
       <span>Influenciado por:</span>
       ${influences.map((item) => `<strong>${escapeHtml(item.title)}</strong>`).join("")}
+    </div>
+  `;
+}
+
+function renderRecommendationScoreBreakdown(album) {
+  const breakdown = album.scoreBreakdown || {};
+  const items = [
+    ["Afinidade direta", breakdown.directAffinity],
+    ["Afinidade adjacente", breakdown.adjacentAffinity],
+    ["Lacuna inteligente", breakdown.gapBonus],
+    ["Discos âncora", breakdown.anchorInfluence],
+    ["Exploração", breakdown.noveltyBonus],
+    ["Feedback", breakdown.feedbackAdjustment],
+    ["Penalidade por repetição", breakdown.repetitionPenalty ? -Math.abs(breakdown.repetitionPenalty) : 0]
+  ].filter(([, value]) => Number.isFinite(Number(value)) && Number(value) !== 0);
+  if (!items.length) return "";
+  return `
+    <div class="recommendation-breakdown">
+      <span>Score do algoritmo</span>
+      <div>
+        ${items
+          .map(([label, value]) => {
+            const numeric = Number(value);
+            return `
+              <p>
+                <span>${escapeHtml(label)}</span>
+                <strong>${numeric > 0 ? "+" : ""}${Math.round(numeric)}</strong>
+              </p>
+            `;
+          })
+          .join("")}
+      </div>
     </div>
   `;
 }
