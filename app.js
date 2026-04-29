@@ -4134,9 +4134,50 @@ function getFilteredSocialPosts(allPosts, ownPosts) {
   if (active === "reviews") return allPosts.filter((post) => post.type === "review");
   if (active === "defended") return allPosts.filter((post) => post.type === "defended_album");
   if (active === "compatible") return allPosts.filter((post) => post.ownPost || isPostCompatibleWithCollection(post));
-  if (active === "saved") return allPosts.filter((post) => post.type === "saved_to_radar" || wishlistHasAlbum(post));
-  if (active === "common") return allPosts.filter((post) => collectionHasAlbum(post));
+  if (active === "saved") return uniqueTimelinePosts([
+    ...allPosts.filter(isPostSavedByUser),
+    ...state.wishlist.map(wishlistAlbumToTimelinePost)
+  ]);
+  if (active === "common") return allPosts.filter(isPostCommonOrCloseToCollection);
   return allPosts;
+}
+
+function uniqueTimelinePosts(posts = []) {
+  const seen = new Set();
+  return posts.filter((post) => {
+    const key = post.id || albumIdentityKey(post);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function wishlistAlbumToTimelinePost(album = {}) {
+  const normalized = normalizeAlbum(album);
+  return {
+    id: `wishlist-${normalized.identityKey}`,
+    type: "saved_to_radar",
+    userId: SOCIAL_CURRENT_USER_ID,
+    user: state.profile.name || defaultProfile.name,
+    handle: state.profile.handle || defaultProfile.handle,
+    album: normalized.title,
+    artist: normalized.artist,
+    year: normalized.year || "",
+    genre: normalized.genre || "",
+    style: normalized.style || "",
+    tags: normalized.tags || [],
+    pressing: normalized.style || normalized.genre || "Radar",
+    rating: Number(normalized.rating || 0),
+    note: normalized.reason || "Salvo no radar para garimpar depois.",
+    createdAt: album.savedAt || new Date().toISOString(),
+    reactions: normalizeSocialReactions(),
+    albumSnapshot: normalized,
+    likes: 0,
+    comments: 0,
+    seed: normalized.coverSeed || 1,
+    coverUrl: normalized.coverUrl || "",
+    ownPost: true
+  };
 }
 
 function renderTimelinePost(post) {
@@ -4230,9 +4271,8 @@ function userReactedToTimelinePost(post, reactionType) {
 }
 
 function isPostCompatibleWithCollection(post) {
-  if (state.collection.length < 3) return false;
   if (collectionHasAlbum(post)) return true;
-  const collector = getSocialCollectors().find((item) => item.id === post.userId || item.handle === post.handle);
+  const collector = getSocialCollectorForPost(post);
   if (!collector) {
     const profile = getTasteProfile();
     const signals = uniqueList([post.genre, post.style, ...(post.tags || [])].filter(Boolean)).map(normalizeSignalTerm);
@@ -4245,9 +4285,47 @@ function isPostCompatibleWithCollection(post) {
   const postKey = albumIdentityKey(post);
   return (
     match.compatibilityPercent >= 55 ||
+    isRelevantSocialMatchType(match.matchType) ||
     match.albumsTheyHaveThatIFit.some((album) => albumIdentityKey(album) === postKey) ||
     match.commonGenres.some((genre) => normalizeGenreLabel(genre) === normalizeGenreLabel(post.genre))
   );
+}
+
+function getSocialCollectorForPost(post = {}) {
+  return getSocialCollectors().find((item) => item.id === post.userId || item.handle === post.handle);
+}
+
+function isRelevantSocialMatchType(matchType = "") {
+  return ["Gêmeo de estante", "Complemento de estante", "Guia de gênero", "Vizinho de disco"].includes(matchType);
+}
+
+function isPostSavedByUser(post) {
+  return Boolean(
+    wishlistHasAlbum(post) ||
+      userReactedToTimelinePost(post, "salvar_no_radar") ||
+      (post.ownPost && post.type === "saved_to_radar")
+  );
+}
+
+function isPostCommonOrCloseToCollection(post) {
+  return collectionHasAlbum(post) || isPostCloseToCollection(post);
+}
+
+function isPostCloseToCollection(post) {
+  const postAlbum = normalizeAlbum(post);
+  if (!postAlbum.title && !postAlbum.artist && !postAlbum.genre) return false;
+  const postTerms = getSocialAlbumSignalTerms(postAlbum);
+  return state.collection.some((album) => {
+    const owned = normalizeAlbum(album);
+    if (owned.normalizedArtist && owned.normalizedArtist === postAlbum.normalizedArtist) return true;
+    if (owned.genre && postAlbum.genre && normalizeGenreLabel(owned.genre) === normalizeGenreLabel(postAlbum.genre)) return true;
+    const ownedTerms = getSocialAlbumSignalTerms(owned);
+    const sharedTerms = [...postTerms].filter((term) => ownedTerms.has(term));
+    if (sharedTerms.length >= 2) return true;
+    return [...postTerms].some((term) =>
+      [...ownedTerms].some((ownedTerm) => getAdjacentTerms(ownedTerm).some((adjacent) => normalizeSignalTerm(adjacent) === term))
+    );
+  });
 }
 
 function handleSocialReaction(postId, reactionType) {
@@ -4329,9 +4407,9 @@ function renderEmptyTimelineState() {
   const emptyMessages = {
     reviews: "Nenhum review apareceu ainda. Registre uma avaliação para começar essa trilha.",
     defended: "Nenhum disco defendido ainda. Escolha um LP que mereça uma defesa apaixonada.",
-    compatible: "Cadastre mais alguns discos ou siga colecionadores para ativar eventos compatíveis.",
-    saved: "Nada salvo no radar ainda. Quando alguém convencer você, salve o disco para garimpar depois.",
-    common: "Ainda não há eventos com discos em comum na sua estante."
+    compatible: "Siga colecionadores ou salve discos no radar para preencher esta aba.",
+    saved: "Siga colecionadores ou salve discos no radar para preencher esta aba.",
+    common: "Cadastre discos com artista, gênero ou estilo próximo dos posts para preencher esta aba."
   };
   const message = emptyMessages[state.activeSocialFilter] || "Publique uma audição da sua coleção para começar seu histórico social.";
 
