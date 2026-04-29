@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groova</title>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111111'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%23f2efe9'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23111111'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23f2efe9'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Groova">
+          <span class="brand-mark"><i data-lucide="disc-3"></i></span>
+          <span>
+            <strong>Groova</strong>
+            <small>coleção analógica</small>
+          </span>
+        </a>
+
+        <nav class="main-nav" aria-label="Navegação principal">
+          <button class="nav-item active" data-view="collection">
+            <i data-lucide="library"></i>
+            Coleção
+          </button>
+          <button class="nav-item" data-view="recommendations">
+            <i data-lucide="sparkles"></i>
+            Recomendações
+          </button>
+          <button class="nav-item" data-view="community">
+            <i data-lucide="users"></i>
+            Comunidade
+          </button>
+          <button class="nav-item" data-view="news">
+            <i data-lucide="newspaper"></i>
+            Novidades
+          </button>
+          <button class="nav-item" data-view="insights">
+            <i data-lucide="bar-chart-3"></i>
+            Mapa
+          </button>
+        </nav>
+
+        <div class="sidebar-card">
+          <span class="eyebrow">Agora na estante</span>
+          <strong id="sidebarHighlight">Carregando coleção...</strong>
+          <small id="sidebarHighlightMeta"></small>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div class="search-control">
+            <i data-lucide="search"></i>
+            <input id="globalSearch" type="search" placeholder="Buscar disco, artista, gênero ou comentário" />
+          </div>
+
+          <div class="topbar-actions">
+            <button class="icon-button" id="exportButton" title="Exportar coleção">
+              <i data-lucide="download"></i>
+            </button>
+            <button class="primary-button" id="addAlbumButton">
+              <i data-lucide="plus"></i>
+              Adicionar disco
+            </button>
+          </div>
+        </header>
+
+        <section class="view active" id="collectionView" data-view-panel="collection">
+          <div class="collection-hero">
+            <div class="hero-copy">
+              <span class="eyebrow">Biblioteca pessoal</span>
+              <h1>Acervo em rotação</h1>
+              <p>Notas de escuta, favoritos e prioridades da próxima garimpagem.</p>
+            </div>
+            <div class="turntable-visual" aria-hidden="true">
+              <div class="tonearm"></div>
+              <div class="platter">
+                <div class="record-grooves"></div>
+                <div class="record-label"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-grid" id="statsGrid"></div>
+
+          <div class="section-toolbar">
+            <div>
+              <span class="eyebrow">Catálogo</span>
+              <h2>Discos cadastrados</h2>
+            </div>
+            <div class="toolbar-controls">
+              <select id="genreFilter" aria-label="Filtrar por gênero">
+                <option value="all">Todos os gêneros</option>
+              </select>
+              <select id="sortSelect" aria-label="Ordenar coleção">
+                <option value="recent">Mais recentes</option>
+                <option value="rating">Melhor avaliação</option>
+                <option value="artist">Artista A-Z</option>
+                <option value="year">Ano</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="album-grid" id="collectionGrid"></div>
+          <div class="empty-state hidden" id="collectionEmpty">
+            <i data-lucide="disc"></i>
+            <h3 id="collectionEmptyTitle">Sua estante começa vazia</h3>
+            <p id="collectionEmptyText">Cadastre seus primeiros discos para ativar recomendações, mapa e feed de audições.</p>
+            <button class="primary-button" id="emptyAddAlbumButton">
+              <i data-lucide="plus"></i>
+              Cadastrar primeiro disco
+            </button>
+          </div>
+        </section>
+
+        <section class="view" id="recommendationsView" data-view-panel="recommendations">
+          <div class="section-heading with-action">
+            <div>
+              <span class="eyebrow">Próximas compras</span>
+              <h1>Radar da estante</h1>
+              <p>Discos que conversam com o perfil atual da coleção.</p>
+            </div>
+            <div class="recommendation-status" id="recommendationStatus">
+              Recalcula ao salvar cada disco
+            </div>
+          </div>
+
+          <div class="recommendation-strip" id="tasteProfile"></div>
+          <div class="recommendation-grid" id="recommendationGrid"></div>
+        </section>
+
+        <section class="view" id="communityView" data-view-panel="community">
+          <div class="section-heading with-action community-heading">
+            <div>
+              <span class="eyebrow">Diário social</span>
+              <h1>Comunidade Groova</h1>
+              <p>Reviews, audições recentes e colecionadores com gosto parecido.</p>
+            </div>
+            <button class="secondary-button" id="editProfileButton">
+              <i data-lucide="user-pen"></i>
+              Editar perfil
+            </button>
+          </div>
+
+          <div class="community-layout timeline-layout">
+            <main class="timeline-column">
+              <div class="social-composer">
+                <div class="composer-avatar">
+                  <i data-lucide="radio"></i>
+                </div>
+                <div class="composer-body">
+                  <div class="composer-heading">
+                    <div>
+                      <span class="eyebrow">Registrar audição</span>
+                      <h2>Adicionar ao diário</h2>
+                    </div>
+                    <span>Publique uma nota curta sobre um disco da sua coleção.</span>
+                  </div>
+                  <div class="composer-grid">
+                    <select id="spinEventType" aria-label="Tipo de evento musical">
+                      <option value="listening">Ouvi agora</option>
+                      <option value="review">Review</option>
+                      <option value="defended_album">Preciso defender este disco</option>
+                      <option value="revisited">Revisitei</option>
+                    </select>
+                    <select id="spinAlbumSelect" aria-label="Escolher disco para publicar"></select>
+                    <input id="spinNoteInput" maxlength="160" placeholder="Comentário curto sobre a audição" />
+                    <button class="primary-button" id="publishSpinButton">
+                      <i data-lucide="radio"></i>
+                      Compartilhar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="timeline-controls" id="socialFilters" aria-label="Filtros da linha do tempo"></div>
+
+              <div class="timeline-section">
+                <div class="social-feed" id="socialFeed"></div>
+              </div>
+            </main>
+
+            <aside class="timeline-rail">
+              <div class="profile-panel" id="profilePanel"></div>
+
+              <div class="match-panel">
+                <div class="section-mini-heading">
+                  <span class="eyebrow">Membros</span>
+                  <h2>Colecionadores para seguir</h2>
+                </div>
+                <div id="collectorMatches" class="collector-list"></div>
+              </div>
+
+              <div class="social-section pressing-panel">
+                <div class="section-mini-heading">
+                  <span class="eyebrow">Popular</span>
+                  <h2>Discussões da semana</h2>
+                </div>
+                <div class="pressing-list" id="pressingDiscussions"></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="newsView" data-view-panel="news">
+          <div class="section-heading with-action">
+            <div>
+              <span class="eyebrow">Curadoria</span>
+              <h1>Radar de lançamentos e garimpos</h1>
+              <p>Lançamentos, reedições, críticas e sinais da cena independente para alimentar sua próxima busca.</p>
+            </div>
+            <div class="news-action-group">
+              <button class="secondary-button" id="refreshNewsButton">
+                <i data-lucide="refresh-cw"></i>
+                Atualizar
+              </button>
+              <span class="news-status" id="newsStatus" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div class="news-filters" id="newsFilters"></div>
+          <div class="news-grid" id="newsGrid"></div>
+        </section>
+
+        <section class="view" id="insightsView" data-view-panel="insights">
+          <div class="section-heading">
+              <span class="eyebrow">Leitura da coleção</span>
+              <h1>Mapa da estante</h1>
+              <p>Raio-X da coleção, hábitos de escuta e discos que estão pedindo nova atenção.</p>
+          </div>
+          <div class="insights-layout">
+            <div class="insight-panel">
+              <h2>Gêneros</h2>
+              <div id="genreChart" class="bar-list"></div>
+            </div>
+            <div class="insight-panel">
+              <h2>Décadas</h2>
+              <div id="decadeChart" class="bar-list"></div>
+            </div>
+            <div class="insight-panel wide">
+              <h2>Discos para revisitar</h2>
+              <div id="revisitList" class="revisit-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="album-dialog" id="albumDialog">
+      <form method="dialog" id="albumForm" class="album-form">
+        <div class="dialog-header">
+          <div>
+            <span class="eyebrow">Cadastro</span>
+            <h2 id="dialogTitle">Adicionar disco</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="button" id="closeDialogButton" title="Fechar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <input type="hidden" id="albumId" />
+        <input type="hidden" id="albumPressing" />
+
+        <div class="amazon-import-panel">
+          <div class="amazon-import-row">
+            <label>
+              Link da Amazon
+              <input id="albumPurchaseUrl" type="url" inputmode="url" placeholder="https://www.amazon.com.br/..." autocomplete="off" />
+            </label>
+            <button class="secondary-button" type="button" id="importAmazonButton">
+              <i data-lucide="wand-sparkles"></i>
+              Preencher
+            </button>
+          </div>
+          <p class="field-hint" id="amazonImportStatus" aria-live="polite"></p>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Título
+            <input id="albumTitle" required maxlength="80" autocomplete="off" spellcheck="false" />
+          </label>
+          <label>
+            Artista
+            <input id="albumArtist" required maxlength="80" autocomplete="off" spellcheck="false" />
+          </label>
+          <div class="release-lookup-panel hidden" id="releaseSuggestions" aria-live="polite"></div>
+          <label>
+            Ano
+            <input id="albumYear" type="number" min="1900" max="2100" required />
+          </label>
+          <label>
+            Gênero
+            <select id="albumGenre" required>
+              <option value="" disabled>Escolha um gênero</option>
+              <option>Rock</option>
+              <option>Jazz</option>
+              <option>Soul</option>
+              <option>MPB</option>
+              <option>Eletrônica</option>
+              <option>Hip-Hop</option>
+              <option>Clássica</option>
+              <option>Pop</option>
+              <option>Experimental</option>
+            </select>
+          </label>
+          <label>
+            Estilo / subgênero
+            <input id="albumStyle" placeholder="ex.: hard bop, pós-punk, samba-jazz" maxlength="80" />
+          </label>
+          <label>
+            Condição
+            <select id="albumCondition">
+              <option>Mint</option>
+              <option>Near Mint</option>
+              <option>Very Good+</option>
+              <option>Very Good</option>
+              <option>Good</option>
+              <option>Fair</option>
+            </select>
+          </label>
+          <label>
+            Nota
+            <input id="albumRating" type="range" min="1" max="5" step="0.5" value="4" />
+            <span class="range-output" id="ratingOutput">4.0</span>
+          </label>
+          <label>
+            Local de compra
+            <input id="albumPurchasePlace" placeholder="ex.: feira, loja, Discogs, presente" maxlength="80" />
+          </label>
+          <label>
+            Valor
+            <input id="albumPrice" type="number" min="0" step="0.01" placeholder="ex.: 120.00" />
+          </label>
+          <label>
+            Tags
+            <input id="albumTags" placeholder="separe por vírgula" maxlength="120" />
+          </label>
+        </div>
+
+        <div class="cover-tools full-field">
+          <label>
+            Imagem da capa
+            <input id="albumCoverUrl" placeholder="Cole uma URL de imagem ou envie uma foto da capa" />
+          </label>
+          <div class="cover-actions">
+            <button class="secondary-button" type="button" id="lookupCoverButton">
+              <i data-lucide="search"></i>
+              Buscar capa online
+            </button>
+            <label class="file-button">
+              <i data-lucide="image-up"></i>
+              Enviar imagem
+              <input id="albumCoverFile" type="file" accept="image/*" />
+            </label>
+          </div>
+          <div class="cover-preview" id="coverPreview">
+            <i data-lucide="image"></i>
+            <span>A capa real aparecerá no card do disco.</span>
+          </div>
+          <div class="cover-candidates hidden" id="coverCandidates"></div>
+          <p class="field-hint" id="coverStatus">
+            A busca online usa título e artista para consultar capas públicas. Enviar imagem salva uma cópia reduzida no navegador.
+          </p>
+        </div>
+
+        <label class="full-field">
+          Comentário de audição
+          <textarea id="albumComment" rows="5" placeholder="O que você percebeu na gravação, edição, mixagem ou experiência de escuta?"></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button class="danger-button hidden" type="button" id="deleteAlbumButton">
+            <i data-lucide="lock"></i>
+            Exclusão bloqueada
+          </button>
+          <span></span>
+          <button class="secondary-button" type="button" id="cancelAlbumButton">Cancelar</button>
+          <button class="primary-button" type="submit">
+            <i data-lucide="save"></i>
+            Salvar disco
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="album-dialog" id="profileDialog">
+      <form method="dialog" id="profileForm" class="album-form">
+        <div class="dialog-header">
+          <div>
+            <span class="eyebrow">Perfil público</span>
+            <h2>Editar presença social</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="button" id="closeProfileDialogButton" title="Fechar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Nome de exibição
+            <input id="profileName" maxlength="60" required />
+          </label>
+          <label>
+            Usuário
+            <input id="profileHandle" maxlength="30" required />
+          </label>
+          <label>
+            Cidade
+            <input id="profileCity" maxlength="60" placeholder="ex.: São Paulo" />
+          </label>
+          <label>
+            Foco da coleção
+            <input id="profileFocus" maxlength="80" placeholder="ex.: jazz, MPB, reedições, garimpo nacional" />
+          </label>
+          <label>
+            Ritual de escuta
+            <input id="profileRitual" maxlength="80" placeholder="ex.: noites de domingo, fone, sala dedicada" />
+          </label>
+        </div>
+
+        <label class="full-field">
+          Bio curta
+          <textarea id="profileBio" rows="4" maxlength="220"></textarea>
+        </label>
+
+        <section class="profile-settings-panel full-field">
+          <div class="section-mini-heading">
+            <span class="eyebrow">Privacidade</span>
+            <h3>Perfil público local</h3>
+          </div>
+          <div class="privacy-grid">
+            <label class="switch-row">
+              <input id="profileShowCollection" type="checkbox" />
+              <span>Mostrar coleção publicamente</span>
+            </label>
+            <label class="switch-row">
+              <input id="profileShowWishlist" type="checkbox" />
+              <span>Mostrar wishlist publicamente</span>
+            </label>
+            <label class="switch-row">
+              <input id="profileAllowComparison" type="checkbox" />
+              <span>Permitir comparação de estante</span>
+            </label>
+            <label class="switch-row">
+              <input id="profileAllowTasteMatching" type="checkbox" />
+              <span>Permitir match por gosto</span>
+            </label>
+            <label class="privacy-select-row">
+              <span>Valor investido</span>
+              <select id="profileInvestmentVisibility">
+                <option value="never">Nunca mostrar</option>
+                <option value="private">Somente eu</option>
+                <option value="public">Público</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="profile-danger-zone full-field">
+          <div>
+            <span class="eyebrow">Zona de risco</span>
+            <p>Reinicia perfil, posts e preferências sociais. A coleção é preservada.</p>
+          </div>
+          <button class="danger-button" type="button" id="resetAppButton">
+            <i data-lucide="refresh-ccw"></i>
+            Zerar app
+          </button>
+        </section>
+
+        <div class="dialog-actions">
+          <span></span>
+          <button class="secondary-button" type="button" id="cancelProfileButton">Cancelar</button>
+          <button class="primary-button" type="submit">
+            <i data-lucide="save"></i>
+            Salvar perfil
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="album-dialog comparison-dialog" id="collectorComparisonDialog">
+      <div class="comparison-dialog-content" id="collectorComparisonContent"></div>
+    </dialog>
+
+    <dialog class="album-dialog album-love-dialog" id="albumLoveDialog">
+      <div class="album-love-content" id="albumLoveContent"></div>
+    </dialog>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
