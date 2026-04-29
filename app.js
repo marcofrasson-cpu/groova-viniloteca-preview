@@ -4404,7 +4404,7 @@ function renderCollectorMatches() {
           <div class="collector-match-type">${escapeHtml(collector.match.matchType)}</div>
           <div class="compatibility">
             <div class="compatibility-row">
-              <span>afinidade de estante</span>
+              <span>Afinidade ${collector.compatibility}% · ${escapeHtml(getCollectorConfidenceLabel(collector.match.confidence))}</span>
               <strong>${collector.compatibility}%</strong>
             </div>
             <div class="match-meter"><span style="width: ${collector.compatibility}%"></span></div>
@@ -4475,9 +4475,6 @@ function buildCollectorMatchChips(match, collector) {
 }
 
 function getCollectorMatchExplanation(match) {
-  if (state.collection.length < 3 || match.confidence === "baixa") {
-    return "A leitura ainda é inicial, mas estes sinais já ajudam o Groova a procurar colecionadores próximos da sua estante.";
-  }
   return match.explanation;
 }
 
@@ -4903,7 +4900,7 @@ function saveAlbumLoveRecommendation(albumKey) {
 function renderCollectorComparisonModal(collector) {
   const match = compareCollections(state.collection, collector.collection || [], state.wishlist || [], collector.wishlist || []);
   const isFollowing = state.following.includes(collector.id);
-  const confidenceLabel = match.confidence === "baixa" ? "compatibilidade inicial" : "compatibilidade";
+  const confidenceLabel = getCollectorConfidenceLabel(match.confidence);
   const affinityChips = buildCollectorAffinityChips(match, collector);
 
   elements.collectorComparisonContent.innerHTML = `
@@ -4920,7 +4917,7 @@ function renderCollectorComparisonModal(collector) {
 
     <div class="comparison-hero">
       <div class="comparison-score-card">
-        <span>${escapeHtml(confidenceLabel)}</span>
+        <span>Afinidade · ${escapeHtml(confidenceLabel)}</span>
         <strong>${match.compatibilityPercent}%</strong>
         <div class="match-meter"><span style="width: ${match.compatibilityPercent}%"></span></div>
       </div>
@@ -6216,7 +6213,7 @@ function compareCollections(myCollection = [], otherCollection = [], myWishlist 
   const parts = buildSocialComparisonParts(myProfile, otherProfile);
   const affinity = calculateCollectorAffinity(myProfile, otherProfile);
   const dataConfidence = getCollectorAffinityConfidence(myProfile, otherProfile, affinity.score, parts);
-  const compatibilityPercent = capCollectorCompatibilityScore(affinity.score, myProfile, otherProfile);
+  const compatibilityPercent = calibrateCollectorCompatibilityScore(affinity.score, myProfile, otherProfile, parts);
   const result = {
     compatibilityPercent,
     confidence: dataConfidence,
@@ -6261,7 +6258,8 @@ function calculateCollectorAffinity(myProfile, otherProfile) {
   );
   const complementaryGaps = Math.min(15, parts.gapsTheyCoverForMe.length * 6 + parts.gapsICoverForThem.length * 3);
   const diversityNovelty = Math.min(10, parts.diversitySignals.length * 2 + parts.albumsTheyHaveThatIFit.length * 1.5);
-  const rawScore = albumsArtists + genresStyles + notesFavorites + wishlistRadar + complementaryGaps + diversityNovelty;
+  const signalFloor = getCollectorAffinitySignalFloor(parts);
+  const rawScore = Math.max(albumsArtists + genresStyles + notesFavorites + wishlistRadar + complementaryGaps + diversityNovelty, signalFloor);
 
   return {
     score: clampScore(rawScore),
@@ -6272,6 +6270,7 @@ function calculateCollectorAffinity(myProfile, otherProfile) {
       wishlistRadar: Math.round(wishlistRadar),
       complementaryGaps: Math.round(complementaryGaps),
       diversityNovelty: Math.round(diversityNovelty),
+      signalFloor: Math.round(signalFloor),
       finalScore: clampScore(rawScore)
     },
     matchingSignals: parts.matchingSignals,
@@ -6297,7 +6296,7 @@ function classifyMatchType(result) {
 
 function buildMatchExplanation(result) {
   if (result.confidence === "baixa" && result.compatibilityPercent < 45) {
-    return "Ainda há pouca base para cravar afinidade. Cadastre mais discos, notas e itens no radar para o Groova comparar estantes com mais precisão.";
+    return "Ainda há poucos sinais musicais em comum. Cadastre mais discos, notas e itens no radar para o Groova comparar estantes com mais precisão.";
   }
 
   const sentences = [];
@@ -6332,6 +6331,11 @@ function buildMatchExplanation(result) {
   if (result.wishlistMatches?.myWishlistInOtherCollection?.length) {
     const radarText = formatHumanList(result.wishlistMatches.myWishlistInOtherCollection.map((album) => album.title).slice(0, 2));
     sentences.push(`${radarText} já aparece na outra estante e conversa diretamente com seu radar.`);
+  }
+
+  if (result.confidence === "baixa") {
+    const confidenceNote = "A afinidade musical já aparece, mas a confiança ainda é inicial porque há poucos discos cadastrados.";
+    return [...sentences.slice(0, 2), confidenceNote].join(" ");
   }
 
   return sentences.slice(0, 3).join(" ") || "A compatibilidade existe mais pela soma de sinais discretos do que por um único disco em comum.";
@@ -6707,20 +6711,45 @@ function getDiversitySignals(myProfile, otherProfile) {
     .slice(0, 4);
 }
 
-function capCollectorCompatibilityScore(score, myProfile, otherProfile) {
+function getCollectorAffinitySignalFloor(parts = {}) {
+  let floor = 0;
+  if (parts.commonAlbums?.length) floor = Math.max(floor, 72 + Math.min(12, (parts.commonAlbums.length - 1) * 6));
+  if (parts.commonArtists?.length) floor = Math.max(floor, 64 + Math.min(12, (parts.commonArtists.length - 1) * 4));
+  if (parts.commonGenres?.length && parts.commonStyles?.length) floor = Math.max(floor, 58 + Math.min(14, parts.commonStyles.length * 5));
+  if (parts.commonGenres?.length && parts.commentSignalMatches?.length) floor = Math.max(floor, 60 + Math.min(10, parts.commentSignalMatches.length * 4));
+  if (parts.sharedLovedAlbums?.length) floor = Math.max(floor, 76 + Math.min(10, (parts.sharedLovedAlbums.length - 1) * 5));
+  if (parts.wishlistMatches?.myWishlistInOtherCollection?.length) floor = Math.max(floor, 66);
+  if (parts.albumsTheyHaveThatIFit?.length >= 2 && parts.commonGenres?.length) floor = Math.max(floor, 62);
+  if (parts.gapsTheyCoverForMe?.length && (parts.commonGenres?.length || parts.commonStyles?.length || parts.albumsTheyHaveThatIFit?.length)) {
+    floor = Math.max(floor, 58 + Math.min(10, parts.gapsTheyCoverForMe.length * 4));
+  }
+  if (parts.commonGenres?.length) floor = Math.max(floor, 48 + Math.min(8, (parts.commonGenres.length - 1) * 3));
+  return floor;
+}
+
+function calibrateCollectorCompatibilityScore(score, myProfile, otherProfile, parts = {}) {
   const minAlbums = Math.min(myProfile.albums.length, otherProfile.albums.length);
   if (!myProfile.albums.length || !otherProfile.albums.length) return 0;
-  if (minAlbums === 1) return Math.min(45, score);
-  if (minAlbums === 2) return Math.min(62, score);
+  const signalFloor = getCollectorAffinitySignalFloor(parts);
+  const calibrated = Math.max(score, signalFloor);
+  if (minAlbums === 1) return Math.min(80, calibrated);
+  if (minAlbums === 2) return Math.min(86, calibrated);
   return Math.min(96, score);
 }
 
 function getCollectorAffinityConfidence(myProfile, otherProfile, score, parts) {
   const minAlbums = Math.min(myProfile.albums.length, otherProfile.albums.length);
   const signalCount = parts.matchingSignals.length + parts.complementarySignals.length;
-  if (minAlbums < 3 || signalCount < 2 || score < 45) return "baixa";
+  if (minAlbums < 3) return "baixa";
+  if (signalCount < 2 || score < 45) return "baixa";
   if (minAlbums >= 5 && score >= 72 && signalCount >= 4) return "alta";
   return "média";
+}
+
+function getCollectorConfidenceLabel(confidence = "baixa") {
+  if (confidence === "alta") return "confiança alta";
+  if (confidence === "média") return "confiança média";
+  return "confiança inicial";
 }
 
 function formatHumanList(items = []) {
