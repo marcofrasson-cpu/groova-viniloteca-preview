@@ -7193,45 +7193,98 @@ function scoreRecommendations(collection, candidates = recommendationPool, wishl
 }
 
 function buildRecommendationExplanation(candidate, scoreBreakdown, profile = {}) {
-  const sentences = [];
   const influences = (scoreBreakdown.influencedBy || []).slice(0, 3);
   const influenceText = formatInfluenceList(influences);
   const candidateStyle = getPrimaryCandidateStyle(candidate);
   const topStyle = profile.topStyles?.[0]?.label;
   const profileBase = [profile.topGenre, topStyle].filter(Boolean).join(" e ");
   const adjacentMatches = getAdjacentMatches(candidate, profile).slice(0, 2);
+  const variant = getStableCopyVariant(candidate, 4);
+  const sentences = [];
 
   if (influenceText) {
-    sentences.push(
-      `${candidate.title} entra como continuação natural da escuta que aparece em ${influenceText}.`
-    );
+    const templates = [
+      `${candidate.title} puxa um fio que já aparece em ${influenceText}.`,
+      `A indicação nasce dos sinais que você deixou em ${influenceText}.`,
+      `${influenceText} dão a pista: ${candidate.title} pode ocupar uma prateleira próxima sem soar redundante.`,
+      `Há um parentesco claro entre ${influenceText} e a linguagem de ${candidate.title}.`
+    ];
+    sentences.push(templates[variant]);
   } else if (profileBase) {
-    sentences.push(
-      `A estante já mostra força em ${profileBase}; ${candidate.title} conversa com esse eixo por ${describeCandidateTexture(candidate, candidateStyle)}.`
-    );
+    const texture = describeCandidateTexture(candidate, candidateStyle);
+    const templates = [
+      `Sua estante aponta para ${profileBase}; ${candidate.title} entra por ${texture}.`,
+      `${candidate.title} aproveita a força atual em ${profileBase} e muda o ângulo da escuta com ${texture}.`,
+      `Pelo que já aparece na coleção, ${candidate.title} parece um próximo passo por ${texture}.`,
+      `O eixo ${profileBase} já está desenhado; ${candidate.title} adiciona outra cor com ${texture}.`
+    ];
+    sentences.push(templates[variant]);
   } else {
     sentences.push(`${candidate.title} é uma entrada sólida para ampliar a estante com ${describeCandidateTexture(candidate, candidateStyle)}.`);
   }
 
   if (scoreBreakdown.gapBonus >= 8 && scoreBreakdown.gapFilled) {
-    sentences.push(
-      `Ele cobre uma lacuna em ${scoreBreakdown.gapFilled}${profile.topGenre ? ` sem abandonar o caminho aberto por ${profile.topGenre}` : ""}.`
-    );
+    sentences.push(buildGapRecommendationSentence(candidate, scoreBreakdown.gapFilled, profile, variant));
   } else if (adjacentMatches.length) {
-    sentences.push(
-      `A ponte mais forte aqui é ${candidate.genre} passando por ${adjacentMatches.join(" e ")}, então a sugestão amplia a coleção sem parecer aleatória.`
-    );
+    sentences.push(buildAdjacentRecommendationSentence(candidate, adjacentMatches, variant));
   } else if (scoreBreakdown.directAffinity >= 14 && profile.topGenre) {
-    sentences.push(`O sinal principal é direto: ${candidate.genre} já aparece bem na coleção e este disco aprofunda essa rota.`);
+    sentences.push(buildDirectRecommendationSentence(candidate, profile, variant));
   } else if (scoreBreakdown.exploratory) {
-    sentences.push(`É uma aposta de garimpo: sai um pouco do centro da coleção, mas ainda preserva sinais reconhecíveis de estilo e época.`);
+    sentences.push(buildExploratoryRecommendationSentence(candidate, variant));
   }
 
   if (scoreBreakdown.repetitionPenalty >= 8) {
     sentences.push("A aderência foi contida para não transformar o radar em mais do mesmo.");
   }
 
-  return sentences.slice(0, 3).join(" ");
+  return sentences.slice(0, 2).join(" ");
+}
+
+function getStableCopyVariant(candidate = {}, modulo = 4) {
+  const seed = stableSeed(`${candidate.title || ""}${candidate.artist || ""}${candidate.year || ""}`);
+  return Math.abs(seed) % modulo;
+}
+
+function buildGapRecommendationSentence(candidate, gap, profile = {}, variant = 0) {
+  const topGenre = profile.topGenre || "";
+  const templates = [
+    `${gap} aparece como lacuna real da estante, e este disco abre essa porta a partir de ${candidate.genre || "um território próximo"}.`,
+    `A função dele no radar é clara: levar a coleção para ${gap}${topGenre ? ` a partir do terreno que você já firmou em ${topGenre}` : ""}.`,
+    `Ele não entra só por gênero; entra porque cobre ${gap} com uma linguagem ainda próxima da sua escuta atual.`,
+    `${candidate.title} ajuda a testar ${gap} sem transformar a recomendação em salto aleatório.`
+  ];
+  return templates[variant] || templates[0];
+}
+
+function buildAdjacentRecommendationSentence(candidate, adjacentMatches = [], variant = 0) {
+  const bridge = adjacentMatches.join(" e ");
+  const templates = [
+    `A ponte mais interessante é ${candidate.genre} tocando em ${bridge}.`,
+    `O caminho passa por ${bridge}, então a sugestão expande a estante por proximidade musical.`,
+    `Aqui, ${bridge} funciona como ponto de contato entre o que você já tem e o que este disco propõe.`,
+    `A graça da indicação está nessa travessia entre ${candidate.genre} e ${bridge}.`
+  ];
+  return templates[variant] || templates[0];
+}
+
+function buildDirectRecommendationSentence(candidate, profile = {}, variant = 0) {
+  const templates = [
+    `${candidate.genre} já tem peso na sua coleção; este disco aprofunda essa frente com mais repertório.`,
+    `É uma recomendação direta: reforça ${profile.topGenre || candidate.genre} sem virar repetição automática.`,
+    `O sinal principal vem do próprio acervo: há espaço para mais um disco forte nessa família sonora.`,
+    `Aqui o radar não está tentando surpreender; está lapidando uma preferência que já apareceu.`
+  ];
+  return templates[variant] || templates[0];
+}
+
+function buildExploratoryRecommendationSentence(candidate, variant = 0) {
+  const templates = [
+    `É uma aposta de garimpo: um pouco fora do centro, mas ainda com sinais reconhecíveis de estilo e época.`,
+    `Funciona como teste controlado para ver se essa borda da coleção merece virar caminho.`,
+    `A recomendação é exploratória, mas não gratuita: ela preserva pontos de contato com a sua escuta.`,
+    `Pense nele como uma trilha lateral promissora, não como ruptura com a estante.`
+  ];
+  return templates[variant] || templates[0];
 }
 
 function buildRecommendationChips(candidate, scoreBreakdown, profile = {}) {
@@ -7275,11 +7328,15 @@ function describeCandidateTexture(candidate, style) {
 }
 
 function formatInfluenceList(influences) {
-  const titles = influences.map((album) => album.title).filter(Boolean).slice(0, 3);
+  const titles = influences.map((album) => formatInfluenceTitle(album.title)).filter(Boolean).slice(0, 3);
   if (!titles.length) return "";
   if (titles.length === 1) return titles[0];
   if (titles.length === 2) return `${titles[0]} e ${titles[1]}`;
   return `${titles[0]}, ${titles[1]} e ${titles[2]}`;
+}
+
+function formatInfluenceTitle(title = "") {
+  return String(title || "").trim().replace(/[.!?]+$/g, "");
 }
 
 function getProductionChip(candidate) {
